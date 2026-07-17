@@ -51,6 +51,7 @@ function buildWorkbook_(spreadsheet) {
 function seedSettings_() {
   Object.keys(SETTING_DEFAULTS).forEach(key => setSetting_(key, SETTING_DEFAULTS[key], settingDescription_(key)));
   setSetting_('ADMIN_EMAIL', Session.getEffectiveUser().getEmail(), 'Workspace administrator receiving error notifications');
+  try { validateSettings_(); } catch (err) { logError_('Installer', err); throw err; }
 }
 
 function settingDescription_(key) {
