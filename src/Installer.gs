@@ -10,7 +10,12 @@ function onOpen() {
 
 function installStudyOs() {
   const properties = PropertiesService.getScriptProperties();
-  if (properties.getProperty('MASTER_SPREADSHEET_ID')) throw new Error('This script is already installed. Run resetStudyOsForDevelopment() only in a test project to start again.');
+  const existingId = properties.getProperty('MASTER_SPREADSHEET_ID');
+  if (existingId) {
+    const existing = SpreadsheetApp.openById(existingId);
+    Logger.log(APP.NAME + ' is already installed: ' + existing.getUrl());
+    return existing.getUrl();
+  }
   const spreadsheet = SpreadsheetApp.create(APP.NAME + ' — Master');
   properties.setProperty('MASTER_SPREADSHEET_ID', spreadsheet.getId());
   try {
@@ -27,6 +32,15 @@ function installStudyOs() {
     logError_('Installer', error, { spreadsheetId: spreadsheet.getId() });
     throw error;
   }
+}
+
+function getInstallationStatus() {
+  const masterSpreadsheetId = PropertiesService.getScriptProperties().getProperty('MASTER_SPREADSHEET_ID');
+  if (!masterSpreadsheetId) return { installed: false, message: 'No master spreadsheet has been created yet.' };
+  const spreadsheet = SpreadsheetApp.openById(masterSpreadsheetId);
+  const requiredSheets = Object.keys(HEADERS);
+  const missingSheets = requiredSheets.filter(name => !spreadsheet.getSheetByName(name));
+  return { installed: true, masterSpreadsheetId: masterSpreadsheetId, masterSpreadsheetUrl: spreadsheet.getUrl(), missingSheets: missingSheets };
 }
 
 function buildWorkbook_(spreadsheet) {
