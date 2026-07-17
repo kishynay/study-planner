@@ -57,15 +57,31 @@ function emailLayout_(heading, body) { return '<div style="font-family:Arial,san
 function button_(label, url) { return url ? '<a href="' + url + '" style="display:inline-block;margin:6px 8px 6px 0;padding:10px 14px;background:#1f4e78;color:#fff;text-decoration:none;border-radius:4px">' + label + '</a>' : ''; }
 
 function canSendEmail_(user, type) {
-  const key = emailDeduplicationKey_(dateKey_(now_()), user['User ID'], type);
-  const properties = PropertiesService.getScriptProperties();
-  if (properties.getProperty(key)) return false;
-  const types = [APP.EMAIL_TYPES.MORNING, APP.EMAIL_TYPES.PRIORITY, APP.EMAIL_TYPES.EVENING, APP.EMAIL_TYPES.WEEKLY, APP.EMAIL_TYPES.MONTHLY];
-  if (types.indexOf(type) >= 0) {
-    const count = types.filter(item => properties.getProperty(emailDeduplicationKey_(dateKey_(now_()), user['User ID'], item))).length;
-    if (count >= toNumber_(getSetting_('MAX_DAILY_EMAILS'), 3)) return false;
+  const todayKey = dateKey_(now_());
+  try {
+    const logs = valuesToObjects_(APP.SHEETS.EMAIL_LOG);
+    const sentSameType = logs.some(row => String(row['User ID']) === String(user['User ID']) && row.Type === type && String(row.DateKey) === todayKey);
+    if (sentSameType) return false;
+    const types = [APP.EMAIL_TYPES.MORNING, APP.EMAIL_TYPES.PRIORITY, APP.EMAIL_TYPES.EVENING, APP.EMAIL_TYPES.WEEKLY, APP.EMAIL_TYPES.MONTHLY];
+    if (types.indexOf(type) >= 0) {
+      const count = logs.filter(row => String(row['User ID']) === String(user['User ID']) && String(row.DateKey) === todayKey && types.indexOf(row.Type) >= 0).length;
+      if (count >= toNumber_(getSetting_('MAX_DAILY_EMAILS'), 3)) return false;
+    }
+    appendObject_(APP.SHEETS.EMAIL_LOG, { Timestamp: now_(), 'User ID': user['User ID'], Email: user.Email, Type: type, DateKey: todayKey });
+    return true;
+  } catch (err) {
+    // Fallback to properties-based deduplication for older installs
+    const key = emailDeduplicationKey_(todayKey, user['User ID'], type);
+    const properties = PropertiesService.getScriptProperties();
+    if (properties.getProperty(key)) return false;
+    const types = [APP.EMAIL_TYPES.MORNING, APP.EMAIL_TYPES.PRIORITY, APP.EMAIL_TYPES.EVENING, APP.EMAIL_TYPES.WEEKLY, APP.EMAIL_TYPES.MONTHLY];
+    if (types.indexOf(type) >= 0) {
+      const count = types.filter(item => properties.getProperty(emailDeduplicationKey_(todayKey, user['User ID'], item))).length;
+      if (count >= toNumber_(getSetting_('MAX_DAILY_EMAILS'), 3)) return false;
+    }
+    properties.setProperty(key, '1');
+    return true;
   }
-  properties.setProperty(key, '1'); return true;
 }
 
 function sendUserEmail_(user, type, subject, htmlBody) { GmailApp.sendEmail(user.Email, subject, 'Open this email in an HTML-capable mail client.', { htmlBody: htmlBody, name: APP.NAME }); }
