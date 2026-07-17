@@ -1,6 +1,6 @@
 function startStudy_(email, answers) {
   const user = requireUser_(email);
-  const existing = valuesToObjects_(APP.SHEETS.SESSIONS).filter(row => row['User ID'] === user['User ID'] && row.Status === APP.STATUS.OPEN);
+  const existing = rowsForUser_(APP.SHEETS.SESSIONS, user['User ID']).filter(row => row.Status === APP.STATUS.OPEN);
   if (existing.length) throw new Error('You already have an open study session. Submit End Study before starting another one.');
   const subject = normalise_(answers.Subject); const topic = normalise_(answers.Topic);
   validateUserTopic_(user, subject, topic);
@@ -9,7 +9,7 @@ function startStudy_(email, answers) {
 
 function endStudy_(email, answers) {
   const user = requireUser_(email);
-  const session = valuesToObjects_(APP.SHEETS.SESSIONS).filter(row => row['User ID'] === user['User ID'] && row.Status === APP.STATUS.OPEN).sort((a, b) => new Date(b['Start Time']) - new Date(a['Start Time']))[0];
+  const session = rowsForUser_(APP.SHEETS.SESSIONS, user['User ID']).filter(row => row.Status === APP.STATUS.OPEN).sort((a, b) => new Date(b['Start Time']) - new Date(a['Start Time']))[0];
   if (!session) throw new Error('No open study session exists. Start Study before submitting End Study.');
   const endTime = now_(); const startTime = new Date(session['Start Time']); const duration = durationHours_(startTime, endTime);
   if (duration <= 0 || duration > 24) throw new Error('The session duration is invalid. Please contact the administrator.');

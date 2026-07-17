@@ -21,8 +21,9 @@ An installable Google Apps Script system for SSC CGL and CHSL aspirants. Student
 2. Copy `appsscript.json` and every `.gs` file from `src/` into that project. If using `clasp`, copy `.clasp.json.example` to `.clasp.json`, set `scriptId`, then run `clasp push`.
 3. In the Apps Script editor, run `installStudyOs` once and grant the requested Google Workspace permissions.
 4. Open the URL returned in the execution log. It is the new master Sheet.
-5. In `Settings`, set the exam date, administrator email, default goal, reminder times, revision intervals, and Calendar toggle.
+5. In `Settings`, set the exam date, administrator email, default goal, reminder times, revision intervals, and Calendar toggle. The system validates these values on installation and will log an error if they are invalid.
 6. In `Form Map`, copy and distribute only the `Registration` form's published URL. The system emails prefilled Start Study links after registration.
+6.1 The installer creates an `Email Log` sheet to track sent reminders and prevent duplicate emails.
 7. Run `dispatchReminders` once from the editor to authorize Gmail and verify trigger access. Review the project triggers and confirm the 15-minute dispatcher and hourly dashboard refresh exist.
 
 ## Operating Model

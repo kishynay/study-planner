@@ -6,7 +6,7 @@ const APP = Object.freeze({
     USERS: 'Users', SESSIONS: 'Study Sessions', MOCKS: 'Mock Tests',
     REVISION: 'Revision', SYLLABUS: 'Syllabus', PLANNER: 'Weekly Planner',
     DASHBOARD: 'Dashboard Data', ANALYTICS: 'Analytics', SETTINGS: 'Settings',
-    TEMPLATES: 'Syllabus Templates', FORMS: 'Form Map', ERRORS: 'Error Log'
+    INBOX: 'Inbox', LOGS: 'Logs', TEMPLATES: 'Syllabus Templates', FORMS: 'Form Map', ERRORS: 'Error Log', EMAIL_LOG: 'Email Log'
   },
   FORMS: {
     REGISTRATION: 'Registration', START: 'Start Study', END: 'End Study',
@@ -31,7 +31,10 @@ const HEADERS = Object.freeze({
   'Settings': ['Key', 'Value', 'Description'],
   'Syllabus Templates': ['Exam', 'Subject', 'Chapter', 'Topic', 'Estimated Weightage'],
   'Form Map': ['Form Type', 'Form ID', 'Edit URL', 'Published URL', 'Prefilled URL'],
-  'Error Log': ['Timestamp', 'Service', 'Message', 'Context']
+  'Inbox': ['Task', 'Due Date', 'Priority', 'Status', 'Context'],
+  'Logs': ['Timestamp', 'Service', 'Action', 'Status', 'Duration', 'Error'],
+  'Error Log': ['Timestamp', 'Service', 'Message', 'Context'],
+  'Email Log': ['Timestamp', 'User ID', 'Email', 'Type', 'DateKey']
 });
 
 const SETTING_DEFAULTS = Object.freeze({

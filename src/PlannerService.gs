@@ -1,5 +1,7 @@
 function recordPlan_(email, answers) {
-  const user = requireUser_(email); const subjects = String(answers.Subjects || '').split(',').map(normalise_).filter(Boolean); const hours = toNumber_(answers['Target Hours']);
+  const user = requireUser_(email);
+  const subjects = ensureArray_(answers.Subjects);
+  const hours = toNumber_(answers['Target Hours']);
   if (!subjects.length || hours <= 0) throw new Error('Choose at least one subject and provide a positive target hour value.');
   subjects.forEach(subject => appendObject_(APP.SHEETS.PLANNER, { 'Plan ID': createId_('PLN'), 'User ID': user['User ID'], Email: email, Week: normalise_(answers.Week), Date: now_(), Subject: subject, Topic: getRecommendedTopic_(user, subject), 'Planned Hours': Math.round((hours / subjects.length) * 100) / 100, Priority: normalise_(answers.Priority), Status: APP.STATUS.NOT_STARTED }));
 }

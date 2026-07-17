@@ -1,8 +1,10 @@
 function onStudyOsFormSubmit(event) {
+  if (!event || !event.source || typeof event.source.getId !== 'function') throw new Error('Invalid form submit event.');
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    const formType = getFormType_(event.source.getId());
+    let formType = '';
+    try { formType = getFormType_(event.source.getId()); } catch (err) { throw new Error('Unable to determine form type from submission.'); }
     if (!formType) throw new Error('Submission received from an unregistered Form.');
     const email = getRespondentEmail_(event);
     const answers = answersFromEvent_(event);

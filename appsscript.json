@@ -1,23 +1,10 @@
 {
-  "timeZone": "Asia/Kolkata",
-  "runtimeVersion": "V8",
-  "exceptionLogging": "STACKDRIVER",
-  "oauthScopes": [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/forms",
-    "https://www.googleapis.com/auth/script.send_mail",
-    "https://www.googleapis.com/auth/calendar",
-    "https://www.googleapis.com/auth/script.external_request",
-    "https://www.googleapis.com/auth/script.scriptapp",
-    "https://www.googleapis.com/auth/drive"
-  ],
+  "timeZone": "America/New_York",
   "dependencies": {
-    "enabledAdvancedServices": [
-      {
-        "userSymbol": "Calendar",
-        "serviceId": "calendar",
-        "version": "v3"
-      }
-    ]
-  }
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "executionApi": {
+    "access": "ANYONE"
+  },
+  "runtimeVersion": "V8"
 }
