@@ -12,7 +12,6 @@ function installStudyOs() {
   const properties = PropertiesService.getScriptProperties();
   if (properties.getProperty('MASTER_SPREADSHEET_ID')) throw new Error('This script is already installed. Run resetStudyOsForDevelopment() only in a test project to start again.');
   const spreadsheet = SpreadsheetApp.create(APP.NAME + ' — Master');
-  properties.setProperty('MASTER_SPREADSHEET_ID', spreadsheet.getId());
   try {
     buildWorkbook_(spreadsheet);
     setupSpreadsheet_(spreadsheet);
@@ -21,10 +20,12 @@ function installStudyOs() {
     createForms_();
     installTriggers_();
     refreshDashboard();
+    properties.setProperty('MASTER_SPREADSHEET_ID', spreadsheet.getId());
     setSetting_('INSTALLATION_COMPLETE', 'TRUE', 'Set automatically after successful installation');
     Logger.log(APP.NAME + ' installed. Configure Settings and share the registration form from the Form Map sheet: ' + spreadsheet.getUrl());
     return spreadsheet.getUrl();
   } catch (error) {
+    properties.deleteProperty('MASTER_SPREADSHEET_ID');
     logError_('Installer', error, { spreadsheetId: spreadsheet.getId() });
     throw error;
   }
