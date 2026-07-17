@@ -1,5 +1,6 @@
 function seedUserSyllabus_(user) {
-  const templates = valuesToObjects_(APP.SHEETS.TEMPLATES).filter(row => row.Exam === user.Exam);
+  let templates = getRowsByIndex_(APP.SHEETS.TEMPLATES, 'Exam', user.Exam);
+  if (!templates.length) templates = valuesToObjects_(APP.SHEETS.TEMPLATES).filter(row => row.Exam === user.Exam);
   templates.forEach(template => appendObject_(APP.SHEETS.SYLLABUS, { 'Progress ID': createId_('SYL'), 'User ID': user['User ID'], Email: user.Email, Exam: user.Exam, Subject: template.Subject, Chapter: template.Chapter, Topic: template.Topic, Status: APP.STATUS.NOT_STARTED, 'Completion Date': '', 'Estimated Weightage': template['Estimated Weightage'] }));
 }
 
