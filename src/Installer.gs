@@ -1,11 +1,16 @@
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('SSC Study OS')
-    .addItem('Install new Study OS', 'installStudyOs')
-    .addItem('Refresh dashboard', 'refreshDashboard')
-    .addItem('Run reminder dispatcher', 'dispatchReminders')
-    .addItem('Create missing calendars', 'createMissingCalendars')
-    .addItem('Settings help', 'showSettingsSidebar_')
-    .addToUi();
+  try {
+    SpreadsheetApp.getUi().createMenu('SSC Study OS')
+      .addItem('Install new Study OS', 'installStudyOs')
+      .addItem('Refresh dashboard', 'refreshDashboard')
+      .addItem('Run reminder dispatcher', 'dispatchReminders')
+      .addItem('Create missing calendars', 'createMissingCalendars')
+      .addItem('Settings help', 'showSettingsSidebar_')
+      .addToUi();
+  } catch (error) {
+    // Ignore non-UI contexts such as clasp run or execution API calls.
+    return;
+  }
 }
 
 function installStudyOs() {
@@ -88,7 +93,6 @@ function applySheetStyling_(sheet, sheetName, navigationSheets, spreadsheet) {
   navRange.setWrap(true);
 
   sheet.setFrozenRows(3);
-  sheet.hideGridlines(true);
   sheet.setRowHeight(2, 28);
   sheet.setRowHeight(1, 26);
 
