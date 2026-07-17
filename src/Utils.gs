@@ -15,6 +15,8 @@ function dateKey_(value) { return Utilities.formatDate(new Date(value), APP.TIME
 function createId_(prefix) { return prefix + '-' + Utilities.getUuid().slice(0, 8).toUpperCase(); }
 function normalise_(value) { return String(value == null ? '' : value).trim(); }
 function toNumber_(value, fallback) { const n = Number(value); return isFinite(n) ? n : (fallback == null ? 0 : fallback); }
+const SHEET_VALUES_CACHE = {};
+
 function unique_(values) { return values.filter((value, index, all) => all.indexOf(value) === index); }
 
 function ensureArray_(value) {
@@ -23,11 +25,23 @@ function ensureArray_(value) {
   return String(value).split(',').map(normalise_).filter(Boolean);
 }
 
+function clearSheetCache_(sheetName) {
+  if (sheetName) delete SHEET_VALUES_CACHE[sheetName];
+  else Object.keys(SHEET_VALUES_CACHE).forEach(key => delete SHEET_VALUES_CACHE[key]);
+}
+
+function getSheetValues_(sheetName) {
+  if (!SHEET_VALUES_CACHE[sheetName]) {
+    SHEET_VALUES_CACHE[sheetName] = getSheet_(sheetName).getDataRange().getValues();
+  }
+  return SHEET_VALUES_CACHE[sheetName];
+}
+
 function valuesToObjects_(sheetName) {
-  const values = getSheet_(sheetName).getDataRange().getValues();
+  const values = getSheetValues_(sheetName);
   if (values.length < 2) return [];
-  const headers = values.shift();
-  return values.filter(row => row.some(value => value !== '')).map((row, rowIndex) => {
+  const headers = values[0];
+  return values.slice(1).filter(row => row.some(value => value !== '')).map((row, rowIndex) => {
     const object = { _row: rowIndex + 2 };
     headers.forEach((header, index) => object[header] = row[index]);
     return object;
@@ -38,6 +52,7 @@ function appendObject_(sheetName, object) {
   const sheet = getSheet_(sheetName);
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   sheet.appendRow(headers.map(header => object[header] == null ? '' : object[header]));
+  clearSheetCache_(sheetName);
   return sheet.getLastRow();
 }
 
@@ -48,6 +63,7 @@ function updateObject_(sheetName, row, changes) {
     const column = headers.indexOf(key) + 1;
     if (column) sheet.getRange(row, column).setValue(changes[key]);
   });
+  clearSheetCache_(sheetName);
 }
 
 function getRespondentEmail_(event) {
