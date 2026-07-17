@@ -63,12 +63,26 @@ function rowsForUser_(sheetName, userId) {
   return getRowsByIndex_(sheetName, 'User ID', userId);
 }
 
+function getSheetHeaderRow_(sheetName, values) {
+  const expected = HEADERS[sheetName] || [];
+  if (!expected.length) return 1;
+  const rows = values || getSheetValues_(sheetName);
+  for (let rowIndex = 0; rowIndex < Math.min(rows.length, 10); rowIndex += 1) {
+    const row = rows[rowIndex];
+    if (row && row.length >= expected.length && expected.every((header, index) => String(row[index] || '').trim() === header)) {
+      return rowIndex + 1;
+    }
+  }
+  return 1;
+}
+
 function valuesToObjects_(sheetName) {
   const values = getSheetValues_(sheetName);
-  if (values.length < 2) return [];
-  const headers = values[0];
-  return values.slice(1).filter(row => row.some(value => value !== '')).map((row, rowIndex) => {
-    const object = { _row: rowIndex + 2 };
+  const headerRow = getSheetHeaderRow_(sheetName, values);
+  if (values.length <= headerRow) return [];
+  const headers = values[headerRow - 1];
+  return values.slice(headerRow).filter(row => row.some(value => value !== '')).map((row, rowIndex) => {
+    const object = { _row: rowIndex + headerRow + 1 };
     headers.forEach((header, index) => object[header] = row[index]);
     return object;
   });
@@ -76,15 +90,20 @@ function valuesToObjects_(sheetName) {
 
 function appendObject_(sheetName, object) {
   const sheet = getSheet_(sheetName);
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  sheet.appendRow(headers.map(header => object[header] == null ? '' : object[header]));
+  const values = getSheetValues_(sheetName);
+  const headerRow = getSheetHeaderRow_(sheetName, values);
+  const headers = values[headerRow - 1];
+  const row = headers.map(header => object[header] == null ? '' : object[header]);
+  sheet.appendRow(row);
   clearSheetCache_(sheetName);
   return sheet.getLastRow();
 }
 
 function updateObject_(sheetName, row, changes) {
   const sheet = getSheet_(sheetName);
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const values = getSheetValues_(sheetName);
+  const headerRow = getSheetHeaderRow_(sheetName, values);
+  const headers = values[headerRow - 1];
   Object.keys(changes).forEach(key => {
     const column = headers.indexOf(key) + 1;
     if (column) sheet.getRange(row, column).setValue(changes[key]);

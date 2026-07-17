@@ -15,6 +15,7 @@ function installStudyOs() {
   properties.setProperty('MASTER_SPREADSHEET_ID', spreadsheet.getId());
   try {
     buildWorkbook_(spreadsheet);
+    setupSpreadsheet_(spreadsheet);
     seedSettings_();
     seedSyllabusTemplates_();
     createForms_();
@@ -35,17 +36,155 @@ function buildWorkbook_(spreadsheet) {
     const sheet = index === 0 ? first.setName(name) : spreadsheet.insertSheet(name);
     const headers = HEADERS[name];
     sheet.clear();
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, headers.length).setBackground('#1f4e78').setFontColor('#ffffff').setFontWeight('bold');
+    sheet.getRange(3, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(3);
+    sheet.getRange(3, 1, 1, headers.length).setBackground('#1f4e78').setFontColor('#ffffff').setFontWeight('bold');
     sheet.autoResizeColumns(1, headers.length);
-    sheet.getRange(1, 1, Math.max(2, sheet.getMaxRows()), headers.length).createFilter();
+    sheet.getRange(3, 1, Math.max(3, sheet.getMaxRows()), headers.length).createFilter();
     if (name === APP.SHEETS.DASHBOARD || name === APP.SHEETS.ANALYTICS) sheet.setTabColor('#00a88f');
     else if (name === APP.SHEETS.ERRORS) sheet.setTabColor('#dc2626');
     else sheet.setTabColor('#2563eb');
     const protection = sheet.protect().setDescription('SSC Study OS managed sheet');
     protection.setWarningOnly(true);
   });
+}
+
+function setupSpreadsheet_(spreadsheet) {
+  const navigationSheets = [
+    APP.SHEETS.DASHBOARD,
+    APP.SHEETS.USERS,
+    APP.SHEETS.FORMS,
+    APP.SHEETS.TEMPLATES,
+    APP.SHEETS.SYLLABUS,
+    APP.SHEETS.REVISION,
+    APP.SHEETS.PLANNER,
+    APP.SHEETS.MOCKS,
+    APP.SHEETS.INBOX,
+    APP.SHEETS.LOGS
+  ];
+
+  Object.keys(HEADERS).forEach(sheetName => {
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    if (!sheet) return;
+    applySheetStyling_(sheet, sheetName, navigationSheets, spreadsheet);
+  });
+}
+
+function applySheetStyling_(sheet, sheetName, navigationSheets, spreadsheet) {
+  const links = navigationSheets.map(targetName => {
+    if (targetName === sheetName) return targetName;
+    const targetSheet = spreadsheet.getSheetByName(targetName);
+    if (!targetSheet) return targetName;
+    return '=HYPERLINK("#gid=' + targetSheet.getSheetId() + '","' + targetName + '")';
+  });
+
+  const navRange = sheet.getRange(2, 1, 1, links.length + 1);
+  const navValues = [['Navigate:'].concat(links)];
+  navRange.setValues(navValues);
+  navRange.setBackground('#eaf6ff').setFontWeight('bold').setFontSize(9).setHorizontalAlignment('left');
+  navRange.setFontColor('#0f172a');
+  navRange.setVerticalAlignment('middle');
+  navRange.setWrap(true);
+
+  sheet.setFrozenRows(3);
+  sheet.hideGridlines(true);
+  sheet.setRowHeight(2, 28);
+  sheet.setRowHeight(1, 26);
+
+  const headerCount = HEADERS[sheetName].length;
+  const targetColumnCount = Math.max(headerCount, links.length + 1);
+  for (let col = 1; col <= targetColumnCount; col += 1) {
+    sheet.setColumnWidth(col, 140);
+  }
+
+  styleHeaderRow_(sheet, headerCount);
+  addInstructionsRow_(sheet, sheetName, headerCount);
+  applySheetSpecificRules_(sheet, sheetName);
+}
+
+function styleHeaderRow_(sheet, headerCount) {
+  const headerRange = sheet.getRange(3, 1, 1, headerCount);
+  headerRange.setBackground('#1f4e78').setFontColor('#ffffff').setFontWeight('bold').setFontSize(10).setHorizontalAlignment('center');
+  headerRange.setVerticalAlignment('middle');
+  headerRange.setBorder(true, true, true, true, false, false, '#0f172a', SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+}
+
+function addInstructionsRow_(sheet, sheetName, headerCount) {
+  const instructions = {
+    [APP.SHEETS.USERS]: 'Manage registered learners here. Use the form map to update registration and assignment forms.',
+    [APP.SHEETS.SESSIONS]: 'Record study session activity via the Start Study / End Study form flow.',
+    [APP.SHEETS.MOCKS]: 'Track mock tests and performance improvements. Use this sheet for metric review only.',
+    [APP.SHEETS.REVISION]: 'Revision tasks are generated automatically when syllabus items complete.',
+    [APP.SHEETS.SYLLABUS]: 'Track topic progress from Not Started to Completed.',
+    [APP.SHEETS.PLANNER]: 'Weekly planner entries keep study goals, priority, and status transparent.',
+    [APP.SHEETS.DASHBOARD]: 'Dashboard data updates hourly with student activity and trends.',
+    [APP.SHEETS.ANALYTICS]: 'Analytics rows store computed student metrics for reporting.',
+    [APP.SHEETS.INBOX]: 'Use Inbox for quick task capture with due dates and priority.',
+    [APP.SHEETS.LOGS]: 'Log service events and errors for troubleshooting.'
+  };
+  const message = instructions[sheetName] || 'Use this sheet as part of the SSC Study OS workflow.';
+  const noteRange = sheet.getRange(1, 1, 1, headerCount);
+  noteRange.setValues([[message]]);
+  noteRange.setFontStyle('italic').setFontSize(9).setHorizontalAlignment('left');
+  noteRange.setVerticalAlignment('middle');
+  noteRange.setWrap(true);
+  sheet.setRowHeight(1, 24);
+}
+
+function applySheetSpecificRules_(sheet, sheetName) {
+  const dataStartRow = 4;
+  if (sheetName === APP.SHEETS.SYLLABUS) {
+    addStatusValidation_(sheet, 'Status', [APP.STATUS.NOT_STARTED, APP.STATUS.IN_PROGRESS, APP.STATUS.COMPLETED], dataStartRow);
+    addStatusConditionalFormatting_(sheet, 'Status', dataStartRow, {
+      [APP.STATUS.NOT_STARTED]: '#fde68a',
+      [APP.STATUS.IN_PROGRESS]: '#93c5fd',
+      [APP.STATUS.COMPLETED]: '#a7f3d0'
+    });
+  }
+
+  if (sheetName === APP.SHEETS.PLANNER) {
+    addStatusValidation_(sheet, 'Status', [APP.STATUS.NOT_STARTED, APP.STATUS.IN_PROGRESS, APP.STATUS.COMPLETED, APP.STATUS.DUE], dataStartRow);
+    addStatusConditionalFormatting_(sheet, 'Status', dataStartRow, {
+      [APP.STATUS.NOT_STARTED]: '#fef3c7',
+      [APP.STATUS.IN_PROGRESS]: '#bfdbfe',
+      [APP.STATUS.COMPLETED]: '#bbf7d0',
+      [APP.STATUS.DUE]: '#fecaca'
+    });
+  }
+
+  if (sheetName === APP.SHEETS.REVISION) {
+    addStatusValidation_(sheet, 'Status', [APP.STATUS.UPCOMING, APP.STATUS.DUE, APP.STATUS.FINISHED], dataStartRow);
+    addStatusConditionalFormatting_(sheet, 'Status', dataStartRow, {
+      [APP.STATUS.UPCOMING]: '#dbeafe',
+      [APP.STATUS.DUE]: '#fee2e2',
+      [APP.STATUS.FINISHED]: '#d1fae5'
+    });
+  }
+
+  if (sheetName === APP.SHEETS.USERS) {
+    addStatusValidation_(sheet, 'Active', ['TRUE', 'FALSE'], dataStartRow);
+  }
+}
+
+function addStatusValidation_(sheet, headerName, values, startRow) {
+  const column = HEADERS[sheet.getName()].indexOf(headerName) + 1;
+  if (!column) return;
+  const range = sheet.getRange(startRow, column, Math.max(250, sheet.getMaxRows() - startRow + 1), 1);
+  const rule = SpreadsheetApp.newDataValidation().requireValueInList(values, true).setAllowInvalid(false).build();
+  range.setDataValidation(rule);
+}
+
+function addStatusConditionalFormatting_(sheet, headerName, startRow, valueColors) {
+  const column = HEADERS[sheet.getName()].indexOf(headerName) + 1;
+  if (!column) return;
+  const targetRange = sheet.getRange(startRow, column, sheet.getMaxRows() - startRow + 1, 1);
+  const rules = Object.keys(valueColors).map(status => SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(status)
+    .setBackground(valueColors[status])
+    .setRanges([targetRange])
+    .build());
+  const existing = sheet.getConditionalFormatRules();
+  sheet.setConditionalFormatRules(existing.concat(rules));
 }
 
 function seedSettings_() {
