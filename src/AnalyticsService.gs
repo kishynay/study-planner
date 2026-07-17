@@ -1,8 +1,8 @@
 function getUserMetrics_(user) {
-  const sessions = valuesToObjects_(APP.SHEETS.SESSIONS).filter(row => row['User ID'] === user['User ID'] && row.Status === APP.STATUS.CLOSED);
-  const mocks = valuesToObjects_(APP.SHEETS.MOCKS).filter(row => row['User ID'] === user['User ID']);
-  const syllabus = valuesToObjects_(APP.SHEETS.SYLLABUS).filter(row => row['User ID'] === user['User ID']);
-  const revisions = valuesToObjects_(APP.SHEETS.REVISION).filter(row => row['User ID'] === user['User ID']);
+  const sessions = rowsForUser_(APP.SHEETS.SESSIONS, user['User ID']).filter(row => row.Status === APP.STATUS.CLOSED);
+  const mocks = rowsForUser_(APP.SHEETS.MOCKS, user['User ID']);
+  const syllabus = rowsForUser_(APP.SHEETS.SYLLABUS, user['User ID']);
+  const revisions = rowsForUser_(APP.SHEETS.REVISION, user['User ID']);
   const today = dateKey_(now_()); const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); const monthStart = new Date(now_().getFullYear(), now_().getMonth(), 1);
   const hours = records => records.reduce((sum, record) => sum + toNumber_(record['Duration (Hours)']), 0);
   const subjectScores = APP.SUBJECTS.map(subject => { const filtered = sessions.filter(row => row.Subject === subject); return { subject: subject, score: filtered.length ? filtered.reduce((sum, row) => sum + toNumber_(row['Focus Rating (1-10)']), 0) / filtered.length : 0 }; }).filter(item => item.score > 0).sort((a, b) => b.score - a.score);
@@ -38,7 +38,7 @@ function populateTrendData_(dashboard, user) {
 }
 
 function buildDashboardCharts_(sheet) {
-  sheet.getCharts().forEach(chart => sheet.removeChart(chart));
+  if (sheet.getCharts().length > 0) return;
   const studyChart = sheet.newChart().asLineChart().addRange(sheet.getRange('H1:I50')).setPosition(2, 25, 0, 0).setOption('title', 'Study Hours Trend').build();
   const mockChart = sheet.newChart().asLineChart().addRange(sheet.getRange('J1:K50')).setPosition(20, 25, 0, 0).setOption('title', 'Mock Performance').build();
   const subjectChart = sheet.newChart().asPieChart().addRange(sheet.getRange('M1:N5')).setPosition(2, 33, 0, 0).setOption('title', 'Subject Distribution').build();

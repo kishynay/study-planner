@@ -16,6 +16,7 @@ function createId_(prefix) { return prefix + '-' + Utilities.getUuid().slice(0, 
 function normalise_(value) { return String(value == null ? '' : value).trim(); }
 function toNumber_(value, fallback) { const n = Number(value); return isFinite(n) ? n : (fallback == null ? 0 : fallback); }
 const SHEET_VALUES_CACHE = {};
+const SHEET_INDEX_CACHE = {};
 
 function unique_(values) { return values.filter((value, index, all) => all.indexOf(value) === index); }
 
@@ -28,6 +29,8 @@ function ensureArray_(value) {
 function clearSheetCache_(sheetName) {
   if (sheetName) delete SHEET_VALUES_CACHE[sheetName];
   else Object.keys(SHEET_VALUES_CACHE).forEach(key => delete SHEET_VALUES_CACHE[key]);
+  if (sheetName) delete SHEET_INDEX_CACHE[sheetName];
+  else Object.keys(SHEET_INDEX_CACHE).forEach(key => delete SHEET_INDEX_CACHE[key]);
 }
 
 function getSheetValues_(sheetName) {
@@ -35,6 +38,29 @@ function getSheetValues_(sheetName) {
     SHEET_VALUES_CACHE[sheetName] = getSheet_(sheetName).getDataRange().getValues();
   }
   return SHEET_VALUES_CACHE[sheetName];
+}
+
+function buildIndex_(sheetName, key) {
+  if (SHEET_INDEX_CACHE[sheetName] && SHEET_INDEX_CACHE[sheetName]._key === key) return SHEET_INDEX_CACHE[sheetName].map;
+  const rows = valuesToObjects_(sheetName);
+  const map = {};
+  rows.forEach(row => {
+    const v = row[key] == null ? '' : String(row[key]).trim();
+    if (!map[v]) map[v] = [];
+    map[v].push(row);
+  });
+  SHEET_INDEX_CACHE[sheetName] = { _key: key, map: map };
+  return map;
+}
+
+function getRowsByIndex_(sheetName, key, value) {
+  const map = buildIndex_(sheetName, key);
+  const v = value == null ? '' : String(value).trim();
+  return map[v] ? map[v].slice() : [];
+}
+
+function rowsForUser_(sheetName, userId) {
+  return getRowsByIndex_(sheetName, 'User ID', userId);
 }
 
 function valuesToObjects_(sheetName) {
@@ -74,8 +100,18 @@ function getRespondentEmail_(event) {
 }
 
 function answersFromEvent_(event) {
+  if (!event || !event.response || typeof event.response.getItemResponses !== 'function') throw new Error('Malformed form submit event: missing response data.');
   const answers = {};
-  event.response.getItemResponses().forEach(itemResponse => answers[itemResponse.getItem().getTitle()] = itemResponse.getResponse());
+  event.response.getItemResponses().forEach(itemResponse => {
+    try {
+      const title = itemResponse.getItem && itemResponse.getItem().getTitle ? itemResponse.getItem().getTitle() : '';
+      let resp = itemResponse.getResponse();
+      if (resp == null) resp = '';
+      answers[title] = resp;
+    } catch (err) {
+      // Skip malformed item responses but continue processing others
+    }
+  });
   return answers;
 }
 
