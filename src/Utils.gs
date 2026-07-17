@@ -17,6 +17,12 @@ function normalise_(value) { return String(value == null ? '' : value).trim(); }
 function toNumber_(value, fallback) { const n = Number(value); return isFinite(n) ? n : (fallback == null ? 0 : fallback); }
 function unique_(values) { return values.filter((value, index, all) => all.indexOf(value) === index); }
 
+function ensureArray_(value) {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value.map(normalise_).filter(Boolean);
+  return String(value).split(',').map(normalise_).filter(Boolean);
+}
+
 function valuesToObjects_(sheetName) {
   const values = getSheet_(sheetName).getDataRange().getValues();
   if (values.length < 2) return [];

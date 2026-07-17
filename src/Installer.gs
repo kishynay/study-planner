@@ -76,7 +76,14 @@ function seedSyllabusTemplates_() {
   getSheet_(APP.SHEETS.TEMPLATES).getRange(2, 1, rows.length, rows[0].length).setValues(rows);
 }
 
+function clearFormMap_() {
+  const sheet = getSheet_(APP.SHEETS.FORMS);
+  const rows = sheet.getLastRow() - 1;
+  if (rows > 0) sheet.deleteRows(2, rows);
+}
+
 function createForms_() {
+  clearFormMap_();
   const topics = unique_(valuesToObjects_(APP.SHEETS.TEMPLATES).map(row => row.Topic));
   const formDefinitions = [
     [APP.FORMS.REGISTRATION, form => { form.addTextItem().setTitle('Name').setRequired(true); form.addListItem().setTitle('Exam').setChoiceValues(['SSC CGL', 'SSC CHSL']).setRequired(true); form.addTextItem().setTitle('Target Study Hours').setHelpText('Hours per day; leave blank for the system default.'); form.addTextItem().setTitle('Daily Reminder Time').setHelpText('24-hour HH:mm, for example 06:00.'); }],
