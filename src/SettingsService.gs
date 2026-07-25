@@ -11,8 +11,7 @@ function setSetting_(key, value, description) {
 }
 
 function getAdminEmail_() {
-  const configured = getSetting_('ADMIN_EMAIL');
-  return configured || Session.getEffectiveUser().getEmail();
+  return getSetting_('ADMIN_EMAIL');
 }
 
 function showSettingsSidebar_() {

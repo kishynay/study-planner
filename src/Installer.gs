@@ -13,25 +13,34 @@ function installStudyOs() {
   const existingId = properties.getProperty('MASTER_SPREADSHEET_ID');
   if (existingId) {
     const existing = SpreadsheetApp.openById(existingId);
-    Logger.log(APP.NAME + ' is already installed: ' + existing.getUrl());
-    return existing.getUrl();
+    const missingSheets = Object.keys(HEADERS).filter(name => !existing.getSheetByName(name));
+    if (missingSheets.length) throw new Error('The existing installation is incomplete and is missing sheets: ' + missingSheets.join(', ') + '. Do not reset it; repair the missing sheets first.');
+    if (getSetting_('INSTALLATION_COMPLETE') === 'TRUE') {
+      Logger.log(APP.NAME + ' is already installed: ' + existing.getUrl());
+      return existing.getUrl();
+    }
+    return completeInstallation_(existing);
   }
   const spreadsheet = SpreadsheetApp.create(APP.NAME + ' — Master');
   properties.setProperty('MASTER_SPREADSHEET_ID', spreadsheet.getId());
   try {
     buildWorkbook_(spreadsheet);
-    seedSettings_();
-    seedSyllabusTemplates_();
-    createForms_();
-    installTriggers_();
-    refreshDashboard();
-    setSetting_('INSTALLATION_COMPLETE', 'TRUE', 'Set automatically after successful installation');
-    Logger.log(APP.NAME + ' installed. Configure Settings and share the registration form from the Form Map sheet: ' + spreadsheet.getUrl());
-    return spreadsheet.getUrl();
+    return completeInstallation_(spreadsheet);
   } catch (error) {
     logError_('Installer', error, { spreadsheetId: spreadsheet.getId() });
     throw error;
   }
+}
+
+function completeInstallation_(spreadsheet) {
+  seedSettings_();
+  seedSyllabusTemplates_();
+  createForms_();
+  installTriggers_();
+  refreshDashboard();
+  setSetting_('INSTALLATION_COMPLETE', 'TRUE', 'Set automatically after successful installation');
+  Logger.log(APP.NAME + ' installed. Configure Settings and share the registration form from the Form Map sheet: ' + spreadsheet.getUrl());
+  return spreadsheet.getUrl();
 }
 
 function getInstallationStatus() {
@@ -40,7 +49,10 @@ function getInstallationStatus() {
   const spreadsheet = SpreadsheetApp.openById(masterSpreadsheetId);
   const requiredSheets = Object.keys(HEADERS);
   const missingSheets = requiredSheets.filter(name => !spreadsheet.getSheetByName(name));
-  return { installed: true, masterSpreadsheetId: masterSpreadsheetId, masterSpreadsheetUrl: spreadsheet.getUrl(), missingSheets: missingSheets };
+  const settings = spreadsheet.getSheetByName(APP.SHEETS.SETTINGS);
+  const settingsRows = settings ? settings.getDataRange().getValues() : [];
+  const complete = settingsRows.some(row => row[0] === 'INSTALLATION_COMPLETE' && String(row[1]).toUpperCase() === 'TRUE');
+  return { installed: true, masterSpreadsheetId: masterSpreadsheetId, masterSpreadsheetUrl: spreadsheet.getUrl(), missingSheets: missingSheets, complete: complete };
 }
 
 function buildWorkbook_(spreadsheet) {
@@ -63,8 +75,10 @@ function buildWorkbook_(spreadsheet) {
 }
 
 function seedSettings_() {
-  Object.keys(SETTING_DEFAULTS).forEach(key => setSetting_(key, SETTING_DEFAULTS[key], settingDescription_(key)));
-  setSetting_('ADMIN_EMAIL', Session.getEffectiveUser().getEmail(), 'Workspace administrator receiving error notifications');
+  const existingKeys = valuesToObjects_(APP.SHEETS.SETTINGS).map(row => row.Key);
+  Object.keys(SETTING_DEFAULTS).forEach(key => {
+    if (existingKeys.indexOf(key) < 0) setSetting_(key, SETTING_DEFAULTS[key], settingDescription_(key));
+  });
 }
 
 function settingDescription_(key) {
@@ -79,6 +93,7 @@ function settingDescription_(key) {
 }
 
 function seedSyllabusTemplates_() {
+  if (valuesToObjects_(APP.SHEETS.TEMPLATES).length) return;
   const rows = [
     ['SSC CGL', 'Quant', 'Arithmetic', 'Percentage', 3], ['SSC CGL', 'Quant', 'Arithmetic', 'Ratio and Proportion', 3], ['SSC CGL', 'Quant', 'Arithmetic', 'Profit and Loss', 3],
     ['SSC CGL', 'English', 'Grammar', 'Error Spotting', 3], ['SSC CGL', 'English', 'Vocabulary', 'Synonyms and Antonyms', 2], ['SSC CGL', 'English', 'Comprehension', 'Reading Comprehension', 3],
@@ -101,7 +116,10 @@ function createForms_() {
     [APP.FORMS.PLANNING, form => { form.addTextItem().setTitle('Week').setHelpText('Week label, for example 2026-W30').setRequired(true); form.addCheckboxItem().setTitle('Subjects').setChoiceValues(APP.SUBJECTS).setRequired(true); form.addTextItem().setTitle('Target Hours').setRequired(true); form.addListItem().setTitle('Priority').setChoiceValues(['High', 'Medium', 'Low']).setRequired(true); }],
     [APP.FORMS.SYLLABUS, form => { form.addListItem().setTitle('Subject').setChoiceValues(APP.SUBJECTS).setRequired(true); form.addListItem().setTitle('Topic').setChoiceValues(topics).setRequired(true); form.addListItem().setTitle('Status').setChoiceValues([APP.STATUS.NOT_STARTED, APP.STATUS.IN_PROGRESS, APP.STATUS.COMPLETED]).setRequired(true); }]
   ];
-  formDefinitions.forEach(definition => createForm_(definition[0], definition[1]));
+  const existingTypes = valuesToObjects_(APP.SHEETS.FORMS).map(row => row['Form Type']);
+  formDefinitions.forEach(definition => {
+    if (existingTypes.indexOf(definition[0]) < 0) createForm_(definition[0], definition[1]);
+  });
 }
 
 function createForm_(formType, build) {
